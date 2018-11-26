@@ -18,7 +18,8 @@ axis xy tight; hold off; colorbar
 title('Precip. (mm)')
 
 %plot elevation (prediction surface + at observations sites)
-subplot(222)
+%subplot(222)
+figure
 imagesc([0 max(swissX(:))], [0 max(swissY(:))], swissElevation, ...
         'alphadata', ~isnan(swissElevation))
 hold on
@@ -28,7 +29,7 @@ scatter(swissRain(:,3), swissRain(:,4), 20, swissRain(:,2), ...
 %replace markeredgecolor with markeredge on older version of matlab.
 axis xy tight; hold off; colorbar
 title('Elevation (km)')
-
+%%
 %plot X and Y coordinates
 subplot(223)
 imagesc([0 max(swissX(:))], [0 max(swissY(:))], swissX, ...

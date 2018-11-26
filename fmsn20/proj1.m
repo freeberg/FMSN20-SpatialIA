@@ -2,23 +2,24 @@
 
 sR_red = swissRain(swissRain(:,5)==0,:);
 sR_mred = swissRain(swissRain(:,5)==1,:);
-Y = sqrt(sR_red(:,1));
-X = [ones(size(sR_red(:,2),1),1) sR_red(:,2) sR_red(:,2).^2];   % sR_red(:,2:4);
+%Y = sqrt(sR_red(:,1));
+Y = sR_red(:,1);
+X = [ones(size(sR_red(:,2),1),1) sR_red(:,2) sR_red(:,2).^2 sR_red(:,2).^3];   % sR_red(:,2:4);
 %X = sR_red(:,2:4);
 %plot(X,Y,'*')
 B = (X'*X)\(X'*Y);
-s2 = norm(Y-X*B)^2/(length(Y)-3);
+s2 = norm(Y-X*B)^2/(length(Y)-4);
 
 valueGrid = ~isnan(swissElevation);
 elevGrid = swissElevation(valueGrid);
 
-X_hat = [ones(size(elevGrid,1),1) elevGrid(:,1) elevGrid(:,1).^2];% 
+X_hat = [ones(size(elevGrid,1),1) elevGrid(:,1) elevGrid(:,1).^2 elevGrid(:,1).^3];% 
 %X_hat = [elevGrid(:,1) swissX(valueGrid) swissY(valueGrid)];
 
 Y_hat = nan(size(swissElevation));
 
 e = normpdf(X_hat,0,s2);
-Y_hat(valueGrid) = X_hat*B + (e(:,1) + e(:,2) + e(:,3));
+Y_hat(valueGrid) = X_hat*B + (e(:,1) + e(:,2) + e(:,3) + e(:,4));
 
 imagesc([0 max(swissX(:))], [0 max(swissY(:))], Y_hat, ...
         'alphadata', ~isnan(Y_hat))
@@ -97,19 +98,45 @@ title('sqrt of rainfall and predictions')
 
 %%
 % Predictions interval
-x_u = swissGrid;
+x_u = X_hat;
 
 % Ordinary Least Squares
-var_B = s2 * (X'*X) \ eye(3,3);
-var_yhat = x_u * var_B * x_u';
+var_B = s2 * ((X'*X) \ eye(4,4));
+var_yhat = sum((x_u*var_B).*x_u,2);
+% var_yhat = diag(X_hat * var_B * X_hat');
 
 % Kriging
-var_yu = Sigma_uu - (Sigma_uo / Sigma_oo) * Sigma_ou + (x_u' - (X' / Sigma_oo) * Sigma_ou)' ...
-            / ((X' / Sigma_oo) * X) * (x_u' - (X' / Sigma_oo) * Sigma_ou);
+var_yu = diag(Sigma_uu - (Sigma_uo / Sigma_oo) * Sigma_ou + (x_u' - (X' / Sigma_oo) * Sigma_ou)' ...
+            / ((X' / Sigma_oo) * X) * (x_u' - (X' / Sigma_oo) * Sigma_ou));
+        
+%%
+% Plot variance of the points (OLS)
+Y_var = nan(size(swissElevation));
+Y_var(valueGrid) = var_yhat;
+Y_var(Y_var > 1) = 1;
+figure
+imagesc([0 max(swissX(:))], [0 max(swissY(:))], Y_var, ...
+        'alphadata', ~isnan(Y_var))
+hold on
+plot(swissBorder(:,1), swissBorder(:,2),'k')
+axis xy tight; hold off; colorbar
+title('Variance sqrt of rainfall and predictions (OLS)')
+
+%%
+% Plot variance of the points (kriging)
+Y_var(valueGrid) = var_yu;
+%Y_var(Y_var > 0.3) = 0.3;
+figure
+imagesc([0 max(swissX(:))], [0 max(swissY(:))], Y_var, ...
+        'alphadata', ~isnan(Y_var))
+hold on
+plot(swissBorder(:,1), swissBorder(:,2),'k')
+axis xy tight; hold off; colorbar
+title('Variance sqrt of rainfall and predictions (Kriging)')
 %%
 % Validation points comparision
 
-X_val = [ones(size(sR_mred(:,2))) sR_mred(:,2) sR_mred(:,2).^2];
+X_val = [ones(size(sR_mred(:,2))) sR_mred(:,2) sR_mred(:,2).^2 sR_mred(:,2).^3];
 Y_val = sR_mred(:,1);
 % Ols
 e = normpdf(X_val,0,s2);
